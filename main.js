@@ -13,6 +13,7 @@ const socketIo = io(httpServer);
 
 let users = {};
 let games = {};
+let num = 0;
 
 app.get("/", (req, res) => {
   res.send("<h1>Hello im the socket sever, I'm runing happily</h1>");
@@ -29,6 +30,9 @@ socketIo.on("connection", socket => {
 
   // broadcast games to current users
   socketIo.emit("game_update", games);
+
+  // broadcast num
+  socketIo.emit("num_update", num);
 
   socket.on("disconnect", function() {
     console.log(`user have disconnected: ${socket.id}`);
@@ -64,6 +68,14 @@ socketIo.on("connection", socket => {
     socketIo.emit("user_update", users);
   });
 
+  socket.on("num_update", () => {
+    // update num
+    num++;
+
+    // broadcast users to all clients
+    socketIo.emit("num_update", num);
+  });
+
   socket.on("create_game", () => {
     let gameAlreadyExist = false;
     Object.keys(games).map(key => {
@@ -77,7 +89,7 @@ socketIo.on("connection", socket => {
         [uuidv1()]: {
           creator: socket.id,
           playerOne: socket.id,
-          playerTwo: '',
+          playerTwo: undefined,
           gameStatus: {
             status: "waiting on player two"
           }
@@ -100,7 +112,14 @@ socketIo.on("connection", socket => {
       ...games[data.gameKey],
       playerTwo: data.userKey,
     }
+    console.log('entro ',games[data.gameKey].playerTwo,' a ',data.gameKey);
+    // broadcast games to current users
+    socketIo.emit("game_update", games);
+  });
 
+  socket.on('leave_game', data => {
+    console.log('salio ',games[data.gameKey].playerTwo, ' de ',data.gameKey);
+    delete games[data.gameKey].playerTwo;
     // broadcast games to current users
     socketIo.emit("game_update", games);
   });
